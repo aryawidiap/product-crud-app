@@ -1,18 +1,29 @@
 
 import { Head, router } from '@inertiajs/react';
 import { Delete } from 'lucide-react';
-import type { Ref } from 'react';
+import { animate, AnimatePresence, motion } from 'motion/react';
+import type { RefObject } from 'react';
 import { useRef, useState } from 'react';
 import type { Product } from '@/types/product';
+import AppLogoIcon from '@/components/app-logo-icon';
 
-function DeleteConfirmationModal({ product, ref, closeModal }: { product: Product, ref: Ref<HTMLDialogElement>, closeModal: () => void }) {
+function DeleteConfirmationModal({ product, dialogRef, closeModal }: { product: Product, dialogRef: RefObject<HTMLDialogElement | null>, closeModal: () => void }) {
     function deleteProduct(productId: number) {
         router.delete(`/products/${productId}`);
         closeModal();
     }
 
+    function close() {
+        const deleteConfirmationModal = document.getElementById("deleteConfirmationModal");
+        animate(deleteConfirmationModal, { opacity: 0, zoom: 0.95 }, { duration: 0.5, ease: 'easeInOut' });
+        setTimeout(() => {
+            dialogRef.current?.close();
+        }, 1000);
+    }
+
     return (
-        <dialog ref={ref} className='open:backdrop:bg-black/50 starting:backdrop:opacity-0 left-1/2 top-1/2 -translate-1/2 p-4 rounded-md transition duration-300 ease-in-out starting:opacity-0 starting:scale-95 ' id='deleteConfirmationModal'>
+        // <motion.dialog ref={dialogRef} className='open:backdrop:bg-black/50 starting:backdrop:opacity-0 left-1/2 top-1/2 -translate-1/2 p-4 rounded-md transition duration-300 ease-in-out starting:opacity-0 starting:scale-95 ' id='deleteConfirmationModal'>
+        <motion.dialog ref={dialogRef} className='open:backdrop:bg-black/50 left-1/2 top-1/2 -translate-1/2 p-4 rounded-md  ' id='deleteConfirmationModal'>
             <div className='flex flex-row gap-3 items-center'>
                 <Delete className='stroke-red-500 size-20' />
                 <div>
@@ -44,25 +55,31 @@ function DeleteConfirmationModal({ product, ref, closeModal }: { product: Produc
             </div>
             <hr className='my-4' />
             <div className='flex gap-2 justify-end-safe'>
-                <button onClick={closeModal} className='py-1 px-2 rounded-md outline outline-white'>Cancel</button>
+                <button onClick={close} className='py-1 px-2 rounded-md outline outline-white'>Cancel</button>
                 <button onClick={() => deleteProduct(product.id)} id='deleteConfirmationButton' className='py-1 px-2 rounded-md bg-red-600' type='submit'>Delete</button>
             </div>
-        </dialog>
+        </motion.dialog>
     );
 }
 
 function ProductRows({ products, showDeleteConfirmationModal }: { products: Array<Product>, showDeleteConfirmationModal: (product: Product) => void }) {
     if (products) {
-        return products.map(product =>
-            <tr className='odd:bg-stone-900 even:bg-stone-500' key={product.id}>
-                <td className='p-2'>{product.title}</td>
-                <td className='p-2'>{product.formattedPrice}</td>
-                <td className='p-2'>{product.description}</td>
-                <td className='p-2 flex gap-2'>
-                    <a href={'/products/' + product.id + '/edit'} className='px-2 py-1 bg-yellow-500 text-black rounded-sm'>Edit</a>
-                    <button className='px-2 py-1 bg-red-700 rounded-sm' onClick={() => showDeleteConfirmationModal(product)}>Delete</button>
-                </td>
-            </tr>
+        return (
+            <AnimatePresence>
+                {
+                    products.map(product =>
+                        <motion.tr className='odd:bg-stone-900 even:bg-stone-500' key={product.id} exit={{ lineHeight: 0, padding: 0, borderSpacing: 0, opacity: 0, fontSize: '0px' }} transition={{ duration: 10 }}>
+                            <td className='p-2'>{product.title}</td>
+                            <td className='p-2'>{product.formattedPrice}</td>
+                            <td className='p-2'>{product.description}</td>
+                            <td className='p-2 flex gap-2'>
+                                <a href={'/products/' + product.id + '/edit'} className='px-2 py-1 bg-yellow-500 text-black rounded-sm'>Edit</a>
+                                <button className='px-2 py-1 bg-red-700 rounded-sm' onClick={() => showDeleteConfirmationModal(product)}>Delete</button>
+                            </td>
+                        </motion.tr>
+                    )
+                }
+            </AnimatePresence>
         );
     }
 
@@ -103,6 +120,8 @@ export default function List({ products }: { products: Array<any> }) {
 
     function showDeleteConfirmationModal(product: Product) {
         setCurrentProduct(product);
+        animate(dialogRef.current, { opacity: 0, zoom: 0.95 }, { duration: 0 });
+        animate(dialogRef.current, { opacity: 100, zoom: 1 }, { duration: 0.5 });
         dialogRef.current?.showModal();
     }
 
@@ -118,12 +137,12 @@ export default function List({ products }: { products: Array<any> }) {
                     <a href="/products/create" className='py-2 px-3 bg-blue-700 rounded-sm'>+ Add new product</a>
                 </div>
                 <div className='rounded-xl overflow-hidden'>
-                    <div>
+                    <div className='overflow-auto'>
                         <ProductTable products={products} showDeleteConfirmationModal={showDeleteConfirmationModal} />
                     </div>
                 </div>
             </div>
-            <DeleteConfirmationModal ref={dialogRef} product={currentProduct} closeModal={closeDeleteConfirmationModal} />
+            <DeleteConfirmationModal dialogRef={dialogRef} product={currentProduct} closeModal={closeDeleteConfirmationModal} />
         </>
     );
 }
